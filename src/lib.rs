@@ -1,15 +1,7 @@
 // quadtree
 
-#[derive(Debug, Clone, Copy, PartialEq)]
-pub struct Point {
-    x: u32,
-    y: u32,
-}
-
-impl Point {
-    pub fn new(x: u32, y: u32) -> Self {
-        Self { x, y }
-    }
+pub trait Vector: Clone + PartialEq {
+    fn point(&self) -> (u32, u32);
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -45,11 +37,12 @@ impl Rectangle {
         self.y + self.h / 2
     }
 
-    fn contains(&self, point: &Point) -> bool {
-        point.x >= self.x
-            && point.x <= self.x + self.w
-            && point.y >= self.y
-            && point.y <= self.y + self.h
+    fn contains<T>(&self, item: &T) -> bool where T: Vector {
+        let (x, y) = item.point();
+        x >= self.x
+            && x <= self.x + self.w
+            && y >= self.y
+            && y <= self.y + self.h
     }
 
     fn intersects(&self, range: &Rectangle) -> bool {
@@ -75,11 +68,12 @@ impl Circle {
         Self { x, y, r, r_squared }
     }
 
-    fn contains(&self, point: Point) -> bool {
+    fn contains<T>(&self, item: T) -> bool where T: Vector {
         // check if the point is in the circle by checking if the euclidean distance of
         // the point and the center of the circle if smaller or equal to the radius of
         // the circle
-        let d = (point.x - self.x).pow(2) + (point.y - self.y).pow(2);
+        let (x, y) = item.point();
+        let d = (x - self.x).pow(2) + (y - self.y).pow(2);
         d <= self.r_squared
     }
 
@@ -110,20 +104,15 @@ impl Circle {
     }
 }
 
-// enum BountryBox {
-//     Rect(Rectangle),
-//     Circle(Circle),
-// }
-
 #[derive(Debug)]
-pub struct QuadTree {
+pub struct QuadTree<T: Vector> {
     boundary: Rectangle,
     capacity: usize,
-    points: Vec<Point>,
-    children: Option<[Box<QuadTree>; 4]>,
+    points: Vec<T>,
+    children: Option<[Box<QuadTree<T>>; 4]>,
 }
 
-impl QuadTree {
+impl<T: Vector> QuadTree<T> {
     pub fn new(boundary: Rectangle, capacity: usize) -> Self {
         Self {
             boundary,
@@ -133,7 +122,7 @@ impl QuadTree {
         }
     }
 
-    fn subdivide(boundary: Rectangle, capacity: usize) -> [Box<QuadTree>; 4] {
+    fn subdivide(boundary: Rectangle, capacity: usize) -> [Box<QuadTree<T>>; 4] {
         let x = boundary.x;
         let y = boundary.y;
         let w = boundary.w / 2;
@@ -152,13 +141,13 @@ impl QuadTree {
         ]
     }
 
-    pub fn insert(&mut self, point: &Point) -> bool {
-        if !self.boundary.contains(point) {
+    pub fn insert(&mut self, item: &T) -> bool {
+        if !self.boundary.contains(item) {
             return false;
         }
 
-        if self.points.len() < self.capacity as usize && !self.points.contains(point) {
-            self.points.push(point.clone());
+        if self.points.len() < self.capacity as usize && !self.points.contains(item) {
+            self.points.push(item.clone());
             return true;
         }
         if self.points.len() == self.capacity {
@@ -166,19 +155,19 @@ impl QuadTree {
             return self.children
                 .get_or_insert_with(move || Self::subdivide(b, c))
                 .iter_mut()
-                .any(|c| c.insert(point));
+                .any(|c| c.insert(item));
         }
         false 
     }
 
-    pub fn remove(&mut self, point: &Point) -> bool {
-        if self.points.contains(point) {
-            self.points = self.points.iter().filter(|p| *p != point).map(Clone::clone).collect();
+    pub fn remove(&mut self, item: &T) -> bool {
+        if self.points.contains(item) {
+            self.points = self.points.iter().filter(|p| *p != item).map(Clone::clone).collect();
             return true;
         }
         if let Some(c) = &mut self.children {
             for child in c.iter_mut() {
-                if child.remove(point) {
+                if child.remove(item) {
                     return true;
                 }
             }
@@ -187,7 +176,7 @@ impl QuadTree {
     }
 
 
-    pub fn query(&self, range: &Rectangle, found: &mut Vec<Point>) {
+    pub fn query(&self, range: &Rectangle, found: &mut Vec<T>) {
         if !range.intersects(&self.boundary) {
             return;
         }
@@ -212,12 +201,12 @@ impl QuadTree {
                 .unwrap_or(0)
     }
 
-    pub fn contains(&self, point: &Point) -> bool {
-        if self.points.contains(point) {
+    pub fn contains(&self, item: &T) -> bool {
+        if self.points.contains(item) {
             return true;
         }
         if let Some(child) = &self.children {
-            return child.iter().any(|ch| ch.contains(point));
+            return child.iter().any(|ch| ch.contains(item));
         }
         false
     }
@@ -226,16 +215,40 @@ impl QuadTree {
 mod tests {
     use super::*;
 
+    #[derive(Debug, Clone, PartialEq)]
+    struct Foo {
+        x: u32,
+        y: u32,
+    }
+
+    impl Foo {
+        fn new(x: u32, y: u32) -> Self {
+            Self { x, y }
+        }
+    }
+
+    impl Vector for Foo {
+        fn point(&self) -> (u32, u32) {
+            (self.x, self.y)
+        }
+    }
+
     #[test]
     fn quadtree_insert_query() {
+
+        let a = Foo::new(0, 0);
+        let b = Foo::new(10, 10);
+
+
         let mut found = Vec::new();
         let (w, h) = (40, 40);
         let bb = Rectangle::new(0, 0, w, h);
         let mut qt = QuadTree::new(bb, 4);
-        qt.insert(&Point::new(0, 0));
-        qt.insert(&Point::new(w, h));
+
+        qt.insert(&a);
+        qt.insert(&b);
         qt.query(&Rectangle::new(0, 0, w, h), &mut found);
-        dbg!(qt.boundary);
-        assert_eq!(found, vec![Point::new(0, 0), Point::new(w, h)]);
+
+        assert_eq!(found, vec![a, b]);
     }
 }
