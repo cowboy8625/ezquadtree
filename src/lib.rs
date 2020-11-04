@@ -6,7 +6,7 @@ pub trait Vector: Clone + PartialEq {
     fn point(&self) -> (u32, u32);
 }
 
-#[derive(Debug, Clone, Copy, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
 pub struct Rectangle {
     pub x: u32,
     pub y: u32,
@@ -56,7 +56,7 @@ impl Rectangle {
 }
 
 // circle struct for a circle shaped query
-#[derive(Debug, Clone, Copy, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
 pub struct Circle {
     x: u32,
     y: u32,
@@ -107,15 +107,15 @@ impl Circle {
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
-pub struct QuadTree<T: Vector> {
+struct Tree<T: Vector> {
     boundary: Rectangle,
     capacity: usize,
     points: Vec<T>,
-    children: Option<[Box<QuadTree<T>>; 4]>,
+    children: Option<[Box<Tree<T>>; 4]>,
 }
 
-impl<T: Vector> QuadTree<T> {
-    pub fn new(boundary: Rectangle, capacity: usize) -> Self {
+impl<T: Vector> Tree<T> {
+    fn new(boundary: Rectangle, capacity: usize) -> Self {
         Self {
             boundary,
             capacity,
@@ -124,7 +124,7 @@ impl<T: Vector> QuadTree<T> {
         }
     }
 
-    fn subdivide(boundary: Rectangle, capacity: usize) -> [Box<QuadTree<T>>; 4] {
+    fn subdivide(boundary: Rectangle, capacity: usize) -> [Box<Tree<T>>; 4] {
         let x = boundary.x;
         let y = boundary.y;
         let w = boundary.w / 2;
@@ -136,14 +136,14 @@ impl<T: Vector> QuadTree<T> {
         let sw = Rectangle::new(x - w, y + h, w, h);
 
         [
-            Box::new(QuadTree::new(nw, capacity)),
-            Box::new(QuadTree::new(ne, capacity)),
-            Box::new(QuadTree::new(sw, capacity)),
-            Box::new(QuadTree::new(se, capacity)),
+            Box::new(Tree::new(nw, capacity)),
+            Box::new(Tree::new(ne, capacity)),
+            Box::new(Tree::new(sw, capacity)),
+            Box::new(Tree::new(se, capacity)),
         ]
     }
 
-    pub fn insert(&mut self, item: &T) -> bool {
+    fn insert(&mut self, item: &T) -> bool {
         if !self.boundary.contains(item) {
             return false;
         }
@@ -162,7 +162,7 @@ impl<T: Vector> QuadTree<T> {
         false 
     }
 
-    pub fn remove(&mut self, item: &T) -> bool {
+    fn remove(&mut self, item: &T) -> bool {
         if self.points.contains(item) {
             self.points = self.points.iter().filter(|p| *p != item).map(Clone::clone).collect();
             return true;
@@ -178,7 +178,7 @@ impl<T: Vector> QuadTree<T> {
     }
 
 
-    pub fn query(&self, range: &Rectangle, found: &mut Vec<T>) {
+    fn query(&self, range: &Rectangle, found: &mut Vec<T>) {
         if !range.intersects(&self.boundary) {
             return;
         }
@@ -194,7 +194,7 @@ impl<T: Vector> QuadTree<T> {
             .map(|c| c.iter().for_each(|c| c.query(&range, found)));
     }
 
-    pub fn len(&self) -> usize {
+    fn len(&self) -> usize {
         self.points.len()
             + self
                 .children
@@ -203,7 +203,7 @@ impl<T: Vector> QuadTree<T> {
                 .unwrap_or(0)
     }
 
-    pub fn contains(&self, item: &T) -> bool {
+    fn contains(&self, item: &T) -> bool {
         if self.points.contains(item) {
             return true;
         }
@@ -213,6 +213,65 @@ impl<T: Vector> QuadTree<T> {
         false
     }
 }
+
+#[derive(Debug, Clone, Deserialize, Serialize)]
+pub struct QuadTree<T: Vector> {
+    tree: Tree<T>,
+    counter: usize,
+    points: Option<Vec<T>>,
+}
+
+impl<T: Vector> QuadTree<T> {
+    pub fn new(boundary: Rectangle, capacity: usize) -> Self {
+        Self {
+            tree: Tree::new(boundary, capacity),
+            counter: 0,
+            points: None,
+        }
+    }
+
+    pub fn insert(&mut self, item: &T) -> bool {
+        self.tree.insert(item)
+    }
+
+    fn remove(&mut self, item: &T) -> bool {
+        self.tree.remove(item)
+    }
+
+    pub fn query(&self, range: &Rectangle, found: &mut Vec<T>) {
+        self.tree.query(range, found);
+    }
+
+    pub fn len(&self) -> usize {
+        self.tree.len()
+    }
+
+    pub fn contains(&self, item: &T) -> bool {
+        self.tree.contains(item)
+    }
+}
+
+impl<T: Vector> Iterator for QuadTree<T> {
+    // we will be counting wisize
+    type Item = T;
+
+    // next() is the only required method
+    fn next(&mut self) -> Option<Self::Item> {
+        if let None = self.points {
+            let mut points = Vec::new();
+            self.tree.query(&self.tree.boundary, &mut points);
+            let counter = self.counter;
+            self.counter += 1;
+            self.points = Some(points);
+            Some(self.points.clone().unwrap().get(counter)?.clone())
+        } else {
+            let counter = self.counter;
+            self.counter += 1;
+            Some(self.points.clone().unwrap().get(counter)?.clone())
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -264,5 +323,23 @@ mod tests {
     fn test_circle() {
         let r = Circle::new(10, 10, 50);
         assert_eq!(r, Circle::new(10, 10, 50));
+    }
+
+    #[test]
+    fn quadtree_iter() {
+        let a = Foo::new(1, 10);
+        let b = Foo::new(2, 10);
+        let c = Foo::new(3, 10);
+        let d = Foo::new(4, 10);
+        let e = Foo::new(5, 10);
+        let mut result: Vec<Foo> = Vec::new();
+
+        let (w, h) = (40, 40);
+        let bb = Rectangle::new(0, 0, w, h);
+        let mut qt = QuadTree::new(bb, 4);
+
+        qt.query(&bb, &mut result);
+
+        assert_eq!(result, vec![a, b, c, d, e]);
     }
 }
