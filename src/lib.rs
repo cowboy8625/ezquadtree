@@ -1,10 +1,11 @@
 // quadtree
+use serde::{Serialize, Deserialize};
 
 pub trait Vector: Clone + PartialEq {
     fn point(&self) -> (u32, u32);
 }
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, Serialize, Deserialize)]
 pub struct Rectangle {
     pub x: u32,
     pub y: u32,
@@ -54,7 +55,7 @@ impl Rectangle {
 }
 
 // circle struct for a circle shaped query
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy, Serialize, Deserialize)]
 struct Circle {
     x: u32,
     y: u32,
@@ -104,7 +105,7 @@ impl Circle {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct QuadTree<T: Vector> {
     boundary: Rectangle,
     capacity: usize,
@@ -250,5 +251,17 @@ mod tests {
         qt.query(&Rectangle::new(0, 0, w, h), &mut found);
 
         assert_eq!(found, vec![a, b]);
+    }
+
+    #[test]
+    fn test_rectangle() {
+        let r = Rectangle::new(10, 10, 50, 50);
+        assert_eq!(r, Rectangle::new(10, 10, 50, 50));
+    }
+
+    #[test]
+    fn test_circle() {
+        let r = Circle::new(10, 10, 50);
+        assert_eq!(r, Circle::new(10, 10, 50));
     }
 }
