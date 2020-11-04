@@ -1,4 +1,5 @@
 // quadtree
+
 use serde::{Serialize, Deserialize};
 
 pub trait Vector: Clone + PartialEq {
@@ -56,7 +57,7 @@ impl Rectangle {
 
 // circle struct for a circle shaped query
 #[derive(Debug, Clone, Copy, Serialize, Deserialize)]
-struct Circle {
+pub struct Circle {
     x: u32,
     y: u32,
     r: u32,
@@ -64,7 +65,7 @@ struct Circle {
 }
 
 impl Circle {
-    fn new(x: u32, y: u32, r: u32) -> Self {
+    pub fn new(x: u32, y: u32, r: u32) -> Self {
         let r_squared = r * r;
         Self { x, y, r, r_squared }
     }
