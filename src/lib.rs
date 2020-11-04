@@ -124,10 +124,6 @@ pub struct QuadTree {
 }
 
 impl QuadTree {
-    // const NW: usize = 0;
-    // const NE: usize = 1;
-    // const SW: usize = 2;
-    // const SE: usize = 3;
     pub fn new(boundary: Rectangle, capacity: usize) -> Self {
         Self {
             boundary,
