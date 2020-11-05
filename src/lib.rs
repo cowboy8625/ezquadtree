@@ -130,7 +130,10 @@ impl<T: Vector> QuadTree<T> {
         let w = boundary.w / 2;
         let h = boundary.h / 2;
 
-        dbg!(x, y, w, h);
+        // dbg!(x, y, w, h);
+        // dbg!(x + w, y, w, h);
+        // dbg!(x, y + h, w, h);
+        // dbg!(x + w, y + h, w, h);
         let nw = Rectangle::new(x, y, w, h);
         let ne = Rectangle::new(x + w, y, w, h);
         let sw = Rectangle::new(x, y + h, w, h);
@@ -214,7 +217,6 @@ impl<T: Vector> QuadTree<T> {
         false
     }
 
-    //pub fn iter(&self) 
 }
 
 impl<'a, T: Vector> IntoIterator for &'a QuadTree<T> {
@@ -268,15 +270,13 @@ pub struct QuadTreeIterator<'a, T: Vector> {
 // }
 
 impl<'a, T: Vector> Iterator for QuadTreeIterator<'a, T> {
-    // we will be counting wisize
     type Item = T;
 
-    // next() is the only required method
     fn next(&mut self) -> Option<Self::Item> {
         if let None = self.points {
             let mut points = Vec::new();
             self.tree.query(&self.tree.boundary, &mut points);
-            dbg!(&mut points);
+            // dbg!(&mut points);
             let counter = self.counter;
             self.counter += 1;
             self.points = Some(points);
@@ -314,19 +314,27 @@ mod tests {
     #[test]
     fn quadtree_insert_query() {
 
-        let a = Foo::new(0, 0);
-        let b = Foo::new(10, 10);
+        let a = Foo::new(11, 20);
+        let b = Foo::new(12, 20);
+        let c = Foo::new(13, 20);
+        let d = Foo::new(14, 20);
+        let e = Foo::new(15, 20);
+        let f = Foo::new(14, 14);
 
 
         let mut found = Vec::new();
-        let (w, h) = (40, 40);
-        let bb = Rectangle::new(0, 0, w, h);
+        let (w, h) = (50, 50);
+        let bb = Rectangle::new(10, 10, w, h);
         let mut qt = QuadTree::new(bb, 4);
         qt.insert(&a);
         qt.insert(&b);
-        qt.query(&Rectangle::new(0, 0, w, h), &mut found);
+        qt.insert(&c);
+        qt.insert(&d);
+        qt.insert(&e);
+        qt.insert(&f);
+        qt.query(&Rectangle::new(0, 0, w+10, h+10), &mut found);
 
-        assert_eq!(found, vec![a, b]);
+        assert_eq!(found, vec![a, b, c, d, e, f]);
     }
 
     #[test]
@@ -349,6 +357,7 @@ mod tests {
         let d = Foo::new(4, 10);
         let e = Foo::new(5, 10);
         let f = Foo::new(4, 4);
+        let g = Foo::new(3, 4);
 
         let (w, h) = (40, 40);
         let bb = Rectangle::new(0, 0, w, h);
@@ -360,22 +369,24 @@ mod tests {
         qt.insert(&d);
         qt.insert(&e);
         qt.insert(&f);
+        qt.insert(&g);
 
-        assert_eq!(qt.len(), 6);
+        assert_eq!(qt.len(), 7);
     }
 
     #[test]
     fn quadtree_iter() {
-        let a = Foo::new(1, 10);
-        let b = Foo::new(2, 10);
-        let c = Foo::new(3, 10);
-        let d = Foo::new(4, 10);
-        let e = Foo::new(5, 10);
-        let f = Foo::new(4, 4);
+        let a = Foo::new(11, 20);
+        let b = Foo::new(12, 20);
+        let c = Foo::new(13, 20);
+        let d = Foo::new(14, 20);
+        let e = Foo::new(15, 20);
+        let f = Foo::new(14, 14);
+
         let mut result: Vec<Foo> = Vec::new();
 
-        let (w, h) = (40, 40);
-        let bb = Rectangle::new(0, 0, w, h);
+        let (w, h) = (50, 50);
+        let bb = Rectangle::new(0, 0, w+10, h+10);
 
         let mut qt = QuadTree::new(bb.clone(), 4);
         qt.insert(&a);
