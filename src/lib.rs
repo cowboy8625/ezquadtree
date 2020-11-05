@@ -2,7 +2,7 @@
 
 use serde::{Serialize, Deserialize};
 
-pub trait Vector: Clone + PartialEq {
+pub trait Vector: Clone + PartialEq + std::fmt::Debug {
     fn point(&self) -> (u32, u32);
 }
 
@@ -130,10 +130,11 @@ impl<T: Vector> QuadTree<T> {
         let w = boundary.w / 2;
         let h = boundary.h / 2;
 
-        let ne = Rectangle::new(x + w, y - h, w, h);
-        let nw = Rectangle::new(x - w, y - h, w, h);
+        dbg!(x, y, w, h);
+        let nw = Rectangle::new(x, y, w, h);
+        let ne = Rectangle::new(x + w, y, w, h);
+        let sw = Rectangle::new(x, y + h, w, h);
         let se = Rectangle::new(x + w, y + h, w, h);
-        let sw = Rectangle::new(x - w, y + h, w, h);
 
         [
             Box::new(QuadTree::new(nw, capacity)),
@@ -275,6 +276,7 @@ impl<'a, T: Vector> Iterator for QuadTreeIterator<'a, T> {
         if let None = self.points {
             let mut points = Vec::new();
             self.tree.query(&self.tree.boundary, &mut points);
+            dbg!(&mut points);
             let counter = self.counter;
             self.counter += 1;
             self.points = Some(points);
@@ -320,7 +322,6 @@ mod tests {
         let (w, h) = (40, 40);
         let bb = Rectangle::new(0, 0, w, h);
         let mut qt = QuadTree::new(bb, 4);
-
         qt.insert(&a);
         qt.insert(&b);
         qt.query(&Rectangle::new(0, 0, w, h), &mut found);
@@ -341,28 +342,53 @@ mod tests {
     }
 
     #[test]
+    fn test_len() {
+        let a = Foo::new(1, 10);
+        let b = Foo::new(2, 10);
+        let c = Foo::new(3, 10);
+        let d = Foo::new(4, 10);
+        let e = Foo::new(5, 10);
+        let f = Foo::new(4, 4);
+
+        let (w, h) = (40, 40);
+        let bb = Rectangle::new(0, 0, w, h);
+
+        let mut qt = QuadTree::new(bb.clone(), 4);
+        qt.insert(&a);
+        qt.insert(&b);
+        qt.insert(&c);
+        qt.insert(&d);
+        qt.insert(&e);
+        qt.insert(&f);
+
+        assert_eq!(qt.len(), 6);
+    }
+
+    #[test]
     fn quadtree_iter() {
         let a = Foo::new(1, 10);
         let b = Foo::new(2, 10);
         let c = Foo::new(3, 10);
         let d = Foo::new(4, 10);
         let e = Foo::new(5, 10);
+        let f = Foo::new(4, 4);
         let mut result: Vec<Foo> = Vec::new();
 
         let (w, h) = (40, 40);
-        let mut bb = Rectangle::new(0, 0, w, h);
+        let bb = Rectangle::new(0, 0, w, h);
 
-        let qt = QuadTree::new(bb.clone(), 4);
+        let mut qt = QuadTree::new(bb.clone(), 4);
         qt.insert(&a);
         qt.insert(&b);
         qt.insert(&c);
         qt.insert(&d);
-        qt.insert(&c);
+        qt.insert(&e);
+        qt.insert(&f);
 
-        for i in qt.iter() {
+        for i in qt.into_iter() {
             result.push(i);
         }
 
-        assert_eq!(result, vec![a, b, c, d, e]);
+        assert_eq!(result, vec![a, b, c, d, e, f]);
     }
 }
