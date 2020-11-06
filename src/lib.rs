@@ -3,7 +3,7 @@
 use serde::{Serialize, Deserialize};
 
 pub trait Vector: Clone + PartialEq + std::fmt::Debug {
-    fn point(&self) -> (u32, u32);
+    fn as_point(&self) -> (u32, u32);
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
@@ -40,18 +40,31 @@ impl Rectangle {
     }
 
     fn contains<T>(&self, item: &T) -> bool where T: Vector {
-        let (x, y) = item.point();
+        let (x, y) = Vector::as_point(item);
         x >= self.x
-            && x <= self.x + self.w
+            && x < self.x + self.w
             && y >= self.y
-            && y <= self.y + self.h
+            && y < self.y + self.h
     }
 
     fn intersects(&self, range: &Rectangle) -> bool {
-        !(range.w - range.x > self.x + self.w
-            || range.x + range.w < self.w - self.x
-            || range.h - range.y > self.y + self.h
-            || range.y + range.h < self.h - self.y)
+        Self::range_intersects(self.get_range_x(), range.get_range_x())
+            && Self::range_intersects(self.get_range_y(), range.get_range_y())
+    }
+
+    fn get_range_x(&self) -> std::ops::Range<u32> {
+        self.x..(self.x + self.w)
+    }
+
+    fn get_range_y(&self) -> std::ops::Range<u32> {
+        self.y..(self.y + self.h)
+    }
+
+    fn range_intersects(mut range1: std::ops::Range<u32>, mut range2: std::ops::Range<u32>) -> bool {
+        if range1.start > range2.start {
+            std::mem::swap(&mut range1, &mut range2);
+        }
+        range1.end > range2.start
     }
 }
 
@@ -74,7 +87,7 @@ impl Circle {
         // check if the point is in the circle by checking if the euclidean distance of
         // the point and the center of the circle if smaller or equal to the radius of
         // the circle
-        let (x, y) = item.point();
+        let (x, y) = Vector::as_point(&item);
         let d = (x - self.x).pow(2) + (y - self.y).pow(2);
         d <= self.r_squared
     }
@@ -114,7 +127,7 @@ struct QuadTree<T: Vector> {
     children: Option<[Box<QuadTree<T>>; 4]>,
 }
 
-impl<T: Vector> QuadTree<T> {
+impl<'a, T: Vector> QuadTree<T> {
     pub fn new(boundary: Rectangle, capacity: usize) -> Self {
         Self {
             boundary,
@@ -130,10 +143,6 @@ impl<T: Vector> QuadTree<T> {
         let w = boundary.w / 2;
         let h = boundary.h / 2;
 
-        // dbg!(x, y, w, h);
-        // dbg!(x + w, y, w, h);
-        // dbg!(x, y + h, w, h);
-        // dbg!(x + w, y + h, w, h);
         let nw = Rectangle::new(x, y, w, h);
         let ne = Rectangle::new(x + w, y, w, h);
         let sw = Rectangle::new(x, y + h, w, h);
@@ -181,30 +190,33 @@ impl<T: Vector> QuadTree<T> {
         false
     }
 
+    pub fn query_mut<F: FnMut(&mut T)>(&mut self, range: &Rectangle, func: &mut F) {
+        todo!();
+    }
 
-    pub fn query(&self, range: &Rectangle, found: &mut Vec<T>) {
+    pub fn query<F: FnMut(&T)>(&self, range: &Rectangle, func: &mut F) {
         if !range.intersects(&self.boundary) {
             return;
         }
 
         for p in &self.points {
             if range.contains(p) {
-                found.push(p.clone());
+                func(p);
             }
         }
 
         self.children
             .as_ref()
-            .map(|c| c.iter().for_each(|c| c.query(&range, found)));
+            .map(|c| c.iter().for_each(|c| c.query(&range, func)));
     }
 
     pub fn len(&self) -> usize {
         self.points.len()
             + self
-                .children
-                .as_ref()
-                .map(|c| c.iter().fold(0, |x, c| x + c.len()))
-                .unwrap_or(0)
+            .children
+            .as_ref()
+            .map(|c| c.iter().fold(0, |x, c| x + c.len()))
+            .unwrap_or(0)
     }
 
     pub fn contains(&self, item: &T) -> bool {
@@ -216,84 +228,51 @@ impl<T: Vector> QuadTree<T> {
         }
         false
     }
-
 }
 
-impl<'a, T: Vector> IntoIterator for &'a QuadTree<T> {
-    type Item = T;
-    type IntoIter = QuadTreeIterator<'a, T>;
-
-    fn into_iter(self) -> Self::IntoIter {
-        QuadTreeIterator {
-            tree: self,
-            counter: 0,
-            points: None,
-        }
-    }
-}
-
-//#[derive(Debug, Clone, Deserialize, Serialize)]
-pub struct QuadTreeIterator<'a, T: Vector> {
-    tree: &'a QuadTree<T>,
-    counter: usize,
-    points: Option<Vec<T>>,
-}
-
-// impl<T: Vector> QuadTree<T> {
-//     pub fn new(boundary: Rectangle, capacity: usize) -> Self {
-//         Self {
-//             tree: Tree::new(boundary, capacity),
-//             counter: 0,
-//             points: None,
-//         }
+// impl<T: Vector> IntoIterator for QuadTree<T> {
+//     type Item = T;
+//     type IntoIter = IntoIter<T>;
+//     fn into_iter(self) -> Self::IntoIter {
 //     }
+// }
 //
-//     pub fn insert(&mut self, item: &T) -> bool {
-//         self.tree.insert(item)
-//     }
+// pub struct IntoIter<T: Vector> {
+//     tree: QuadTree<T>,
+// }
 //
-//     fn remove(&mut self, item: &T) -> bool {
-//         self.tree.remove(item)
-//     }
-//
-//     pub fn query(&self, range: &Rectangle, found: &mut Vec<T>) {
-//         self.tree.query(range, found);
-//     }
-//
-//     pub fn len(&self) -> usize {
-//         self.tree.len()
-//     }
-//
-//     pub fn contains(&self, item: &T) -> bool {
-//         self.tree.contains(item)
+// impl<T: Vector> Iterator for IntoIter<T> {
+//     type Item = i8;
+//     fn next(&mut self) -> Option<i8> {
 //     }
 // }
 
-impl<'a, T: Vector> Iterator for QuadTreeIterator<'a, T> {
-    type Item = T;
+/*
+use std::iter::Iterator;
+enum QuadTree {
+    Internal(Box<[QuadTree; 4]>),
+    Leaf(Option<u32>),
+}
 
-    fn next(&mut self) -> Option<Self::Item> {
-        if let None = self.points {
-            let mut points = Vec::new();
-            self.tree.query(&self.tree.boundary, &mut points);
-            // dbg!(&mut points);
-            let counter = self.counter;
-            self.counter += 1;
-            self.points = Some(points);
-            Some(self.points.clone().unwrap().get(counter)?.clone())
-        } else {
-            let counter = self.counter;
-            self.counter += 1;
-            Some(self.points.clone().unwrap().get(counter)?.clone())
+impl QuadTree {
+    fn into_iter<'a>(&'a self) -> Box<dyn Iterator<Item=&'a u32> + 'a> {
+        match self {
+            QuadTree::Internal(children) => children.iter()
+                .fold(
+                    Box::new(std::iter::empty()) as Box<dyn Iterator<Item = _>>,
+                    |i, c| Box::new(i.chain(c.into_iter()))
+                    ),
+            QuadTree::Leaf(points) => Box::new(points.iter())
         }
     }
 }
+*/
 
 #[cfg(test)]
 mod tests {
     use super::*;
 
-    #[derive(Debug, Clone, PartialEq)]
+    #[derive(Debug, Clone, Copy, PartialEq)]
     struct Foo {
         x: u32,
         y: u32,
@@ -306,35 +285,23 @@ mod tests {
     }
 
     impl Vector for Foo {
-        fn point(&self) -> (u32, u32) {
+        fn as_point(&self) -> (u32, u32) {
             (self.x, self.y)
         }
     }
 
-    #[test]
-    fn quadtree_insert_query() {
+    fn create_foo(range: std::ops::Range<u32>) -> Vec<Foo> {
+        let mut foos = Vec::new();
+        for i in range {
+            foos.push(Foo::new(i, 0));
+        }
+        foos
+    }
 
-        let a = Foo::new(11, 20);
-        let b = Foo::new(12, 20);
-        let c = Foo::new(13, 20);
-        let d = Foo::new(14, 20);
-        let e = Foo::new(15, 20);
-        let f = Foo::new(14, 14);
-
-
-        let mut found = Vec::new();
-        let (w, h) = (50, 50);
-        let bb = Rectangle::new(10, 10, w, h);
-        let mut qt = QuadTree::new(bb, 4);
-        qt.insert(&a);
-        qt.insert(&b);
-        qt.insert(&c);
-        qt.insert(&d);
-        qt.insert(&e);
-        qt.insert(&f);
-        qt.query(&Rectangle::new(0, 0, w+10, h+10), &mut found);
-
-        assert_eq!(found, vec![a, b, c, d, e, f]);
+    fn insert_foo(qt: &mut QuadTree<Foo>, foos: &Vec<Foo>) {
+        for f in foos.iter() {
+            qt.insert(f);
+        }
     }
 
     #[test]
@@ -350,56 +317,35 @@ mod tests {
     }
 
     #[test]
+    fn quadtree_insert_query() {
+
+        let foos = create_foo(0..9);
+        let mut result: Vec<Foo> = Vec::new();
+
+        let (w, h) = (40, 40);
+        let bb = Rectangle::new(0, 0, w, h);
+        let mut qt = QuadTree::new(bb, 4);
+
+        let bb = Rectangle::new(0, 0, w+10, h+10);
+
+        insert_foo(&mut qt, &foos);
+
+        qt.query(&bb, &mut |e| result.push(*e));
+
+        assert_eq!(result, foos);
+    }
+
+    #[test]
     fn test_len() {
-        let a = Foo::new(1, 10);
-        let b = Foo::new(2, 10);
-        let c = Foo::new(3, 10);
-        let d = Foo::new(4, 10);
-        let e = Foo::new(5, 10);
-        let f = Foo::new(4, 4);
-        let g = Foo::new(3, 4);
+        let foos = create_foo(0..9);
 
         let (w, h) = (40, 40);
         let bb = Rectangle::new(0, 0, w, h);
 
         let mut qt = QuadTree::new(bb.clone(), 4);
-        qt.insert(&a);
-        qt.insert(&b);
-        qt.insert(&c);
-        qt.insert(&d);
-        qt.insert(&e);
-        qt.insert(&f);
-        qt.insert(&g);
 
-        assert_eq!(qt.len(), 7);
-    }
+        insert_foo(&mut qt, &foos);
 
-    #[test]
-    fn quadtree_iter() {
-        let a = Foo::new(11, 20);
-        let b = Foo::new(12, 20);
-        let c = Foo::new(13, 20);
-        let d = Foo::new(14, 20);
-        let e = Foo::new(15, 20);
-        let f = Foo::new(14, 14);
-
-        let mut result: Vec<Foo> = Vec::new();
-
-        let (w, h) = (50, 50);
-        let bb = Rectangle::new(0, 0, w+10, h+10);
-
-        let mut qt = QuadTree::new(bb.clone(), 4);
-        qt.insert(&a);
-        qt.insert(&b);
-        qt.insert(&c);
-        qt.insert(&d);
-        qt.insert(&e);
-        qt.insert(&f);
-
-        for i in qt.into_iter() {
-            result.push(i);
-        }
-
-        assert_eq!(result, vec![a, b, c, d, e, f]);
+        assert_eq!(qt.len(), 9);
     }
 }
