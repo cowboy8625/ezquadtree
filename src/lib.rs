@@ -194,7 +194,8 @@ impl<'a, T: Vector> QuadTree<T> {
         todo!();
     }
 
-    pub fn query<F: FnMut(&T)>(&self, range: &Rectangle, func: &mut F) {
+    pub fn query<F: FnMut(&T)>(&self, range: Option<&Rectangle>, func: &mut F) {
+        let range = range.unwrap_or(&self.boundary);
         if !range.intersects(&self.boundary) {
             return;
         }
@@ -207,7 +208,7 @@ impl<'a, T: Vector> QuadTree<T> {
 
         self.children
             .as_ref()
-            .map(|c| c.iter().for_each(|c| c.query(&range, func)));
+            .map(|c| c.iter().for_each(|c| c.query(Some(&range), func)));
     }
 
     /// Return the total number of items in QuadTree
@@ -331,7 +332,7 @@ mod tests {
 
         insert_foo(&mut qt, &foos);
 
-        qt.query(&bb, &mut |e| result.push(*e));
+        qt.query(Some(&bb), &mut |e| result.push(*e));
 
         assert_eq!(result, foos);
     }
