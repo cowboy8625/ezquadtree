@@ -206,9 +206,7 @@ impl<'a, T: Vector> QuadTree<T> {
             }
         }
 
-        self.children
-            .as_ref()
-            .map(|c| c.iter().for_each(|c| c.query(Some(&range), func)));
+        if let Some(c) = self.children.as_ref() { c.iter().for_each(|c| c.query(Some(&range), func)) }
     }
 
     /// Return the total number of items in QuadTree
@@ -221,6 +219,10 @@ impl<'a, T: Vector> QuadTree<T> {
             .unwrap_or(0)
     }
 
+    pub fn is_empty(&self) -> bool {
+        self.len() == 0
+    }
+
     pub fn contains(&self, item: &T) -> bool {
         if self.points.contains(item) {
             return true;
@@ -229,6 +231,20 @@ impl<'a, T: Vector> QuadTree<T> {
             return child.iter().any(|ch| ch.contains(item));
         }
         false
+    }
+
+    pub fn get(&'a self, x: u32, y: u32) -> Option<&'a T> {
+        for p in self.points.iter() {
+            if (x, y) == Vector::as_point(p) {
+                return Some(p);
+            }
+        }
+        if let Some(c) = &self.children {
+            for child in c.iter() {
+                return child.get(x, y);
+            }
+        }
+        None
     }
 }
 
@@ -349,5 +365,19 @@ mod tests {
         insert_foo(&mut qt, &foos);
 
         assert_eq!(qt.len(), 9);
+    }
+
+    #[test]
+    fn test_get() {
+        let foos = create_foo(0..3);
+
+        let (w, h) = (40, 40);
+        let bb = Rectangle::new(0, 0, w, h);
+
+        let mut qt = QuadTree::new(bb.clone(), 4);
+
+        insert_foo(&mut qt, &foos);
+
+        assert_eq!(qt.get(2, 0), Some(&Foo::new(2, 0)));
     }
 }
