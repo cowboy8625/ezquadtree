@@ -23,19 +23,19 @@ impl Rectangle {
         (self.x - self.w / 2, self.y - self.h / 2)
     }
 
-    fn left(&self) -> u32 {
+    fn _left(&self) -> u32 {
         self.x - self.w / 2
     }
 
-    fn right(&self) -> u32 {
+    fn _right(&self) -> u32 {
         self.x + self.w / 2
     }
 
-    fn top(&self) -> u32 {
+    fn _top(&self) -> u32 {
         self.y - self.h / 2
     }
 
-    fn bottom(&self) -> u32 {
+    fn _bottom(&self) -> u32 {
         self.y + self.h / 2
     }
 
@@ -83,7 +83,7 @@ impl Circle {
         Self { x, y, r, r_squared }
     }
 
-    fn contains<T>(&self, item: T) -> bool where T: Vector {
+    fn _contains<T>(&self, item: T) -> bool where T: Vector {
         // check if the point is in the circle by checking if the euclidean distance of
         // the point and the center of the circle if smaller or equal to the radius of
         // the circle
@@ -92,9 +92,9 @@ impl Circle {
         d <= self.r_squared
     }
 
-    fn intersects(&self, range: Rectangle) -> bool {
-        let xDist = ((range.x - self.x) as i32).abs();
-        let yDist = ((range.y - self.y) as i32).abs();
+    fn _intersects(&self, range: Rectangle) -> bool {
+        let x_dist = ((range.x - self.x) as i32).abs();
+        let y_dist = ((range.y - self.y) as i32).abs();
 
         // radius of the circle
         let r = self.r;
@@ -102,15 +102,15 @@ impl Circle {
         let w = range.w;
         let h = range.h;
 
-        let edges = (xDist - w as i32).pow(2) + (yDist - h as i32).pow(2);
+        let edges = (x_dist - w as i32).pow(2) + (y_dist - h as i32).pow(2);
 
         // no intersection
-        if xDist > (r + w) as i32 || yDist > (r + h) as i32 {
+        if x_dist > (r + w) as i32 || y_dist > (r + h) as i32 {
             return false;
         }
 
         // intersection within the circle
-        if xDist <= w as i32 || yDist <= h as i32 {
+        if x_dist <= w as i32 || y_dist <= h as i32 {
             return true;
         }
 
@@ -120,7 +120,7 @@ impl Circle {
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
-struct QuadTree<T: Vector> {
+pub struct QuadTree<T: Vector> {
     boundary: Rectangle,
     capacity: usize,
     points: Vec<T>,
@@ -190,7 +190,7 @@ impl<'a, T: Vector> QuadTree<T> {
         false
     }
 
-    pub fn query_mut<F: FnMut(&mut T)>(&mut self, range: &Rectangle, func: &mut F) {
+    pub fn query_mut<F: FnMut(&mut T)>(&mut self, _range: &Rectangle, _func: &mut F) {
         todo!();
     }
 
@@ -210,6 +210,7 @@ impl<'a, T: Vector> QuadTree<T> {
             .map(|c| c.iter().for_each(|c| c.query(&range, func)));
     }
 
+    /// Return the total number of items in QuadTree
     pub fn len(&self) -> usize {
         self.points.len()
             + self
