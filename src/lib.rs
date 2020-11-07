@@ -3,7 +3,7 @@
 use serde::{Serialize, Deserialize};
 
 pub trait Vector: Clone + PartialEq + std::fmt::Debug {
-    fn as_point(&self) -> (u32, u32);
+    fn as_point(&self) -> Option<(u32, u32)>;
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
@@ -40,11 +40,14 @@ impl Rectangle {
     }
 
     fn contains<T>(&self, item: &T) -> bool where T: Vector {
-        let (x, y) = Vector::as_point(item);
-        x >= self.x
-            && x < self.x + self.w
-            && y >= self.y
-            && y < self.y + self.h
+        if let Some((x, y)) = Vector::as_point(item) {
+            x >= self.x
+                && x < self.x + self.w
+                && y >= self.y
+                && y < self.y + self.h
+        } else {
+            false
+        }
     }
 
     fn intersects(&self, range: &Rectangle) -> bool {
@@ -83,16 +86,19 @@ impl Circle {
         Self { x, y, r, r_squared }
     }
 
-    fn _contains<T>(&self, item: T) -> bool where T: Vector {
+    fn contains<T>(&self, item: T) -> bool where T: Vector {
         // check if the point is in the circle by checking if the euclidean distance of
         // the point and the center of the circle if smaller or equal to the radius of
         // the circle
-        let (x, y) = Vector::as_point(&item);
-        let d = (x - self.x).pow(2) + (y - self.y).pow(2);
-        d <= self.r_squared
+        if let Some((x, y)) = Vector::as_point(&item) {
+            let d = (x - self.x).pow(2) + (y - self.y).pow(2);
+            d <= self.r_squared
+        } else {
+            false
+        }
     }
 
-    fn _intersects(&self, range: Rectangle) -> bool {
+    fn intersects(&self, range: Rectangle) -> bool {
         let x_dist = ((range.x - self.x) as i32).abs();
         let y_dist = ((range.y - self.y) as i32).abs();
 
@@ -232,36 +238,30 @@ impl<'a, T: Vector> QuadTree<T> {
         }
         false
     }
-
-    pub fn get(&'a self, x: u32, y: u32) -> Option<&'a T> {
-        for p in self.points.iter() {
-            if (x, y) == Vector::as_point(p) {
-                return Some(p);
-            }
-        }
-        if let Some(c) = &self.children {
-            for child in c.iter() {
-                return child.get(x, y);
-            }
-        }
-        None
-    }
+    // pub fn iter(&self) -> Iter<'_, T> {
+    //     self.into_iter()
+    // }
 }
 
-// impl<T: Vector> IntoIterator for QuadTree<T> {
-//     type Item = T;
-//     type IntoIter = IntoIter<T>;
+
+// impl<'a, T: Vector> IntoIterator for &'a QuadTree<T> {
+//     type Item = &'a T;
+//     type IntoIter = Iter<'a, Self::Item>;
 //     fn into_iter(self) -> Self::IntoIter {
+//         Iter {
+//             tree: QuadTreek
+//         }
 //     }
 // }
 //
-// pub struct IntoIter<T: Vector> {
+// pub struct Iter<'a, QuadTree<T>> {
 //     tree: QuadTree<T>,
 // }
 //
-// impl<T: Vector> Iterator for IntoIter<T> {
-//     type Item = i8;
-//     fn next(&mut self) -> Option<i8> {
+// impl<'a, T: Vector> Iterator for Iter<'a, T> {
+//     type Item = &'a T;
+//     fn next(&mut self) -> Option<Self::Item> {
+//         None
 //     }
 // }
 
@@ -303,8 +303,8 @@ mod tests {
     }
 
     impl Vector for Foo {
-        fn as_point(&self) -> (u32, u32) {
-            (self.x, self.y)
+        fn as_point(&self) -> Option<(u32, u32)> {
+            Some((self.x, self.y))
         }
     }
 
@@ -365,19 +365,5 @@ mod tests {
         insert_foo(&mut qt, &foos);
 
         assert_eq!(qt.len(), 9);
-    }
-
-    #[test]
-    fn test_get() {
-        let foos = create_foo(0..3);
-
-        let (w, h) = (40, 40);
-        let bb = Rectangle::new(0, 0, w, h);
-
-        let mut qt = QuadTree::new(bb.clone(), 4);
-
-        insert_foo(&mut qt, &foos);
-
-        assert_eq!(qt.get(2, 0), Some(&Foo::new(2, 0)));
     }
 }
