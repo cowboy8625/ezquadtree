@@ -1,7 +1,9 @@
 use crate::{Rectangle, Serialize, Deserialize};
 
-pub trait Vector: Clone + PartialEq + std::fmt::Debug {
+pub trait Vector<Rhs = Self>: Clone + PartialEq + std::fmt::Debug {
     fn as_point(&self) -> Option<(u32, u32)>;
+    fn eq_point(&self, other: &Rhs) -> bool;
+    fn eq_item(&self, other: &Rhs) -> bool;
 }
 
 
@@ -14,6 +16,7 @@ pub struct QuadTree<T: Vector> {
 }
 
 impl<'a, T: Vector> QuadTree<T> {
+    /// Create a new QuadTree object with a boundary and a capacity.
     pub fn new(boundary: Rectangle, capacity: usize) -> Self {
         Self {
             boundary,
@@ -23,6 +26,8 @@ impl<'a, T: Vector> QuadTree<T> {
         }
     }
 
+    // When Nodes(QuadTree) capacity is reached, subdivide is call to create
+    // children.of Node(QuadTree).
     fn subdivide(boundary: Rectangle, capacity: usize) -> [Box<QuadTree<T>>; 4] {
         let x = boundary.x;
         let y = boundary.y;
@@ -42,12 +47,31 @@ impl<'a, T: Vector> QuadTree<T> {
         ]
     }
 
+
+    /// checks to see if location has item not equal to replace.
+    pub fn replace(&mut self, item: &T) -> bool {
+        if !self.boundary.contains(item) {
+            return false;
+        }
+        if let Some(idx) = self.points.iter().position(|x| x.eq_point(item) && !x.eq_item(item) ) {
+            self.points.remove(idx);
+            self.points.push(item.clone());
+            return true;
+        }
+
+        self.children
+            .iter_mut()
+            .flatten()
+            .any(|child| child.replace(item))
+    }
+
+    /// Will not overwrite same location.
     pub fn insert(&mut self, item: &T) -> bool {
         if !self.boundary.contains(item) {
             return false;
         }
 
-        if self.points.len() < self.capacity as usize && !self.points.contains(item) {
+        if self.points.len() < self.capacity as usize && !self.points.iter().any(|i| i.eq_point(item)) {
             self.points.push(item.clone());
             return true;
         }
@@ -58,9 +82,10 @@ impl<'a, T: Vector> QuadTree<T> {
                 .iter_mut()
                 .any(|c| c.insert(item));
         }
-        false 
+        false
     }
 
+    /// Removes Location
     pub fn remove(&mut self, item: &T) -> bool {
         if self.points.contains(item) {
             self.points = self.points.iter().filter(|p| *p != item).map(Clone::clone).collect();
@@ -76,10 +101,12 @@ impl<'a, T: Vector> QuadTree<T> {
         false
     }
 
+    /// Not yet implemented.
     pub fn query_mut<F: FnMut(&mut T)>(&mut self, _range: &Rectangle, _func: &mut F) {
         todo!();
     }
 
+    /// Can pull out Points from a Rectangle area.
     pub fn query<F: FnMut(&T)>(&self, range: Option<&Rectangle>, func: &mut F) {
         let range = range.unwrap_or(&self.boundary);
         if !range.intersects(&self.boundary) {
@@ -105,10 +132,12 @@ impl<'a, T: Vector> QuadTree<T> {
             .unwrap_or(0)
     }
 
+    /// Return `true` if empty.
     pub fn is_empty(&self) -> bool {
         self.len() == 0
     }
 
+    /// Checks to see if item is in QuadTree.
     pub fn contains(&self, item: &T) -> bool {
         if self.points.contains(item) {
             return true;

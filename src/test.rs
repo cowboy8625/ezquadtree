@@ -14,7 +14,7 @@ fn test_rectangle() {
 // }
 
 #[test]
-fn quadtree_insert_query() {
+fn test_quadtree_insert_query() {
 
     let foos = create_foo(0..9);
     let mut result: Vec<Foo> = Vec::new();
@@ -58,11 +58,6 @@ fn test_insert_same_location() {
 
     qt.insert(&old);
     qt.insert(&new);
-    qt.insert(&new);
-    qt.insert(&new);
-    qt.insert(&new);
-    qt.insert(&new);
-    qt.insert(&new);
 
     let mut result = Vec::new();
 
@@ -72,22 +67,51 @@ fn test_insert_same_location() {
     assert_eq!(qt.len(), 1);
 }
 
+#[test]
+fn test_replace_same_location() {
+    let old = Foo::new(5, 5, "old");
+    let new = Foo::new(5, 5, "new");
+
+    let (w, h) = (40, 40);
+    let bb = Rectangle::new(0, 0, w, h);
+
+    let mut qt = QuadTree::new(bb, 4);
+
+    qt.insert(&old);
+    qt.replace(&new);
+
+    let mut result = Vec::new();
+
+    qt.query(None, &mut |e| result.push(e.clone()));
+
+    assert_eq!(result, vec![new]);
+    assert_eq!(qt.len(), 1);
+}
+
 #[derive(Debug, Clone, PartialEq)]
 struct Foo {
-    other: String,
+    item: String,
     x: u32,
     y: u32,
 }
 
 impl Foo {
-    fn new(x: u32, y: u32, other: &str) -> Self {
-        Self { other: other.to_string(), x, y }
+    fn new(x: u32, y: u32, item: &str) -> Self {
+        Self { item: item.to_string(), x, y }
     }
 }
 
 impl Vector for Foo {
     fn as_point(&self) -> Option<(u32, u32)> {
         Some((self.x, self.y))
+    }
+
+    fn eq_point(&self, other: &Foo) -> bool {
+        self.x == other.x && self.y == other.y
+    }
+
+    fn eq_item(&self, other: &Foo) -> bool {
+        self.item == other.item
     }
 }
 
