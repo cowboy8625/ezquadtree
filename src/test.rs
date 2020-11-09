@@ -63,7 +63,7 @@ fn test_insert_same_location() {
 
     qt.query(None, &mut |e| result.push(e.clone()));
 
-    assert_eq!(result[0], old);
+    assert_eq!(result, vec![old]);
     assert_eq!(qt.len(), 1);
 }
 
@@ -78,17 +78,18 @@ fn test_replace_same_location() {
     let mut qt = QuadTree::new(bb, 4);
 
     qt.insert(&old);
-    qt.replace(&new);
+    let return_of_replace = qt.replace(&new);
 
     let mut result = Vec::new();
 
     qt.query(None, &mut |e| result.push(e.clone()));
 
+    assert_eq!(Some(old), return_of_replace);
     assert_eq!(result, vec![new]);
     assert_eq!(qt.len(), 1);
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone)]
 struct Foo {
     item: String,
     x: u32,
@@ -102,16 +103,14 @@ impl Foo {
 }
 
 impl Vector for Foo {
-    fn as_point(&self) -> Option<(u32, u32)> {
-        Some((self.x, self.y))
+    fn as_point(&self) -> (u32, u32) {
+        (self.x, self.y)
     }
+}
 
-    fn eq_point(&self, other: &Foo) -> bool {
+impl PartialEq for Foo {
+    fn eq(&self, other: &Foo) -> bool {
         self.x == other.x && self.y == other.y
-    }
-
-    fn eq_item(&self, other: &Foo) -> bool {
-        self.item == other.item
     }
 }
 

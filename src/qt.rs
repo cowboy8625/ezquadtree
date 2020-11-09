@@ -1,12 +1,68 @@
 use crate::{Rectangle, Serialize, Deserialize};
 
+/// A trait to describe Vector x and y to QuadTree.
 pub trait Vector<Rhs = Self>: Clone + PartialEq + std::fmt::Debug {
-    fn as_point(&self) -> Option<(u32, u32)>;
-    fn eq_point(&self, other: &Rhs) -> bool;
-    fn eq_item(&self, other: &Rhs) -> bool;
+    /// Pulls point out of Type.
+    fn as_point(&self) -> (u32, u32);
 }
 
 
+/// A growable data structure type, with a look up complexity of O(log n).
+/// ```rust
+/// use ezquadtree::{Vector, QuadTree, Rectangle};
+/// #[derive(Debug, Clone)]
+/// struct Foo {
+///     item: String,
+///     x: u32,
+///     y: u32,
+/// }
+/// 
+/// impl Foo {
+///     fn new(x: u32, y: u32, item: &str) -> Self {
+///         Self { item: item.to_string(), x, y }
+///     }
+/// }
+/// 
+/// impl Vector for Foo {
+///     fn as_point(&self) -> (u32, u32) {
+///         (self.x, self.y)
+///     }
+/// }
+/// 
+/// impl PartialEq for Foo {
+///     fn eq(&self, other: &Foo) -> bool {
+///         self.x == other.x && self.y == other.y
+///     }
+/// }
+///
+/// fn main() {
+///     let old = Foo::new(5, 5, "old");
+///     let new = Foo::new(5, 5, "new");
+///
+///     let (w, h) = (40, 40);
+///     let bb = Rectangle::new(0, 0, w, h);
+///     let mut qt = QuadTree::new(bb, 4);
+///
+///     qt.insert(&old);
+///     qt.insert(&new);
+///
+///     let mut result = Vec::new();
+///
+///     qt.query(None, &mut |e| result.push(e.clone()));
+///
+///     assert_eq!(result, vec![old.clone()]);
+///     assert_eq!(qt.len(), 1);
+///
+///     let return_of_replace = qt.replace(&new);
+///
+///     assert_eq!(Some(old.clone()), return_of_replace);
+///     assert_eq!(qt.len(), 1);
+///
+///     qt.query(None, &mut |inner_item| {
+///         assert_eq!(inner_item, &new);
+///     });
+/// }
+/// ```
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct QuadTree<T: Vector> {
     boundary: Rectangle,
@@ -17,6 +73,36 @@ pub struct QuadTree<T: Vector> {
 
 impl<'a, T: Vector> QuadTree<T> {
     /// Create a new QuadTree object with a boundary and a capacity.
+    /// ```rust
+    /// # use ezquadtree::{Rectangle, Vector, QuadTree};
+    /// # #[derive(Debug, Clone)]
+    /// # struct MyType {
+    /// #     item: String,
+    /// #     x: u32,
+    /// #     y: u32,
+    /// # }
+    /// # 
+    /// # impl MyType {
+    /// #     fn new(x: u32, y: u32, item: &str) -> Self {
+    /// #         Self { item: item.to_string(), x, y }
+    /// #     }
+    /// # }
+    /// # 
+    /// # impl Vector for MyType {
+    /// #     fn as_point(&self) -> (u32, u32) {
+    /// #         (self.x, self.y)
+    /// #     }
+    /// # }
+    /// # 
+    /// # impl PartialEq for MyType {
+    /// #     fn eq(&self, other: &MyType) -> bool {
+    /// #         self.x == other.x && self.y == other.y
+    /// #     }
+    /// # }
+    /// # fn main() {
+    /// let quadtree: QuadTree<MyType> = QuadTree::new(Rectangle::new(0, 0, 40, 40), 4);
+    /// # }
+    /// ```
     pub fn new(boundary: Rectangle, capacity: usize) -> Self {
         Self {
             boundary,
@@ -48,21 +134,53 @@ impl<'a, T: Vector> QuadTree<T> {
     }
 
 
-    /// checks to see if location has item not equal to replace.
-    pub fn replace(&mut self, item: &T) -> bool {
+    /// repleace if x and y are not the same and returns the T
+    ///
+    /// ```rust
+    /// # use ezquadtree::{QuadTree, Vector, Rectangle};
+    /// # #[derive(Debug, Clone)]
+    /// # struct Foo {
+    /// #    x: u32,
+    /// #    y: u32,
+    /// #    item: String,
+    /// # }
+    /// # impl Vector for Foo {
+    /// #    fn as_point(&self) -> (u32, u32) {
+    /// #        (self.x, self.y)
+    /// #    }
+    /// # }
+    /// # impl PartialEq for Foo {
+    /// #     fn eq(&self, other: &Foo) -> bool {
+    /// #         self.x == other.x && self.y == other.y
+    /// #     }
+    /// # }
+    /// # fn main() {
+    /// #
+    /// # let boundary = Rectangle::new(0, 0, 40, 40);
+    /// # let mut quadtree = QuadTree::new(boundary, 4);
+    /// # let item1 = Foo { x: 11, y: 5, item: "thing".to_string() };
+    /// # quadtree.insert(&item1);
+    /// let item = Foo { x: 10, y: 5, item: "thing".to_string() };
+    /// quadtree.replace(&item);
+    /// # quadtree.query(None, &mut |i| {
+    /// #     assert_eq!(i, &item1);
+    /// # });
+    /// # }
+    /// ```
+    pub fn replace(&mut self, item: &T) -> Option<T> {
         if !self.boundary.contains(item) {
-            return false;
+            return None;
         }
-        if let Some(idx) = self.points.iter().position(|x| x.eq_point(item) && !x.eq_item(item) ) {
-            self.points.remove(idx);
+        if let Some(idx) = self.points.iter().position(|x| x.as_point() == item.as_point()) {
+            let old_item = self.points.remove(idx);
             self.points.push(item.clone());
-            return true;
+            return Some(old_item);
         }
 
         self.children
             .iter_mut()
             .flatten()
-            .any(|child| child.replace(item))
+            .find_map(|child| child.replace(item))
     }
 
     /// Will not overwrite same location.
@@ -71,7 +189,7 @@ impl<'a, T: Vector> QuadTree<T> {
             return false;
         }
 
-        if self.points.len() < self.capacity as usize && !self.points.iter().any(|i| i.eq_point(item)) {
+        if self.points.len() < self.capacity as usize && !self.points.contains(item) {
             self.points.push(item.clone());
             return true;
         }
@@ -137,7 +255,7 @@ impl<'a, T: Vector> QuadTree<T> {
         self.len() == 0
     }
 
-    /// Checks to see if item is in QuadTree.
+    /// Checks to see if item is in QuadTree from it's Vector x and y.
     pub fn contains(&self, item: &T) -> bool {
         if self.points.contains(item) {
             return true;
@@ -147,9 +265,21 @@ impl<'a, T: Vector> QuadTree<T> {
         }
         false
     }
-    // pub fn iter(&self) -> Iter<'_, T> {
-    //     self.into_iter()
-    // }
+
+    /// Not yet implemented.
+    pub fn iter() {
+        todo!();
+    }
+
+    /// Not yet implemented.
+    pub fn iter_mut() {
+        todo!();
+    }
+
+    /// Not yet implemented.
+    pub fn into_iter() {
+        todo!();
+    }
 }
 
 

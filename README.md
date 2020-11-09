@@ -3,6 +3,6 @@
 This is the first Implementation of a quad tree I have made so there is some room for
 improvement.
 
-A QuadTree uses the Hilbert curve and can be explained [here](http://blog.notdot.net/2009/11/Damn-Cool-Algorithms-Spatial-indexing-with-Quadtrees-and-Hilbert-Curves)
+A [QuadTree](https://www.i-programmer.info/programming/theory/1679-quadtrees-and-octrees.html) uses the Hilbert curve and can be explained [here](http://blog.notdot.net/2009/11/Damn-Cool-Algorithms-Spatial-indexing-with-Quadtrees-and-Hilbert-Curves)
 
 
