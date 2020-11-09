@@ -17,4 +17,5 @@ serde = { version = "1.0.117", features = ["derive"] }
 [badges]
 is-it-maintained-issue-resolution = { repository = "https://github.com/cowboy8625/ezquadtree" }
 is-it-maintained-open-issues = { repository = "https://github.com/cowboy8625/ezquadtree" }
+maintenance = { status = "actively-developed" }
 
