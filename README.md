@@ -2,6 +2,7 @@
 ![GitHub repo size](https://img.shields.io/github/repo-size/cowboy8625/ezquadtree)
 ![issuse](https://img.shields.io/github/issues/cowboy8625/ezquadtree)
 ![Discord](https://img.shields.io/discord/509849754155614230)
+![Lines of Code](https://tokei.rs/b1/github/cowboy8625/ezquadtree)
 # Easy Quad Tree (ezquadtree)
 
 This is the first Implementation of a quad tree I have made so there is some room for
