@@ -171,7 +171,7 @@ impl<'a, T: Vector> QuadTree<T> {
         if !self.boundary.contains(item) {
             return None;
         }
-        if let Some(idx) = self.points.iter().position(|x| x.as_point() == item.as_point()) {
+        if let Some(idx) = self.points.iter().position(|x| x == item) {
             let old_item = self.points.remove(idx);
             self.points.push(item.clone());
             return Some(old_item);
