@@ -189,7 +189,8 @@ impl<'a, T: Vector> QuadTree<T> {
             return false;
         }
 
-        if self.points.len() < self.capacity as usize && !self.points.contains(item) {
+        if self.points.len() < self.capacity as usize
+            && !self.points.iter().any(|x| x.as_point() == item.as_point()) {
             self.points.push(item.clone());
             return true;
         }
