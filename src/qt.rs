@@ -267,7 +267,12 @@ impl<'a, T: Vector> QuadTree<T> {
     }
 
     /// Not yet implemented.
-    pub fn iter() {
+    pub fn iter(&'a self) { // -> Iter<'a, T> {
+        // Iter {
+        //     tree: self,
+        //     found: Vec::new(),
+        //     index: 0,
+        // }
         todo!();
     }
 
@@ -292,27 +297,28 @@ impl<T: Vector> Iterator for &QuadTree<T> {
 }
 */
 
-// impl<'a, T: Vector> IntoIterator for &'a QuadTree<T> {
-//     type Item = &'a T;
-//     type IntoIter = Iter<'a, Self::Item>;
-//     fn into_iter(self) -> Self::IntoIter {
-//         Iter {
-//             tree: QuadTree<
-//         }
-//     }
-// }
-//
-// pub struct Iter<'a, QuadTree<T>> {
-//     tree: QuadTree<T>,
-// }
-//
-// impl<'a, T: Vector> Iterator for Iter<'a, T> {
-//     type Item = &'a T;
-//     fn next(&mut self) -> Option<Self::Item> {
-//         None
-//     }
-// }
+/*
+impl<'a, T: Vector> IntoIterator for &'a QuadTree<T> {
+    type Item = &'a T;
+    type IntoIter = Iter<'a, T>;
+    fn into_iter(self) -> Self::IntoIter {
+        self.iter()
+    }
+}
 
+pub struct Iter<'a, T> where T: Vector + 'a {
+    tree: &'a QuadTree<T>,
+    found: Vec<&'a T>,
+    index: usize,
+    none_count: usize,
+}
+
+impl<'a, T: Vector> Iterator for Iter<'a, T> {
+    type Item = &'a T;
+    fn next(&mut self) -> Option<Self::Item> {
+    }
+}
+*/
 /*
 use std::iter::Iterator;
 enum QuadTree {

@@ -8,7 +8,7 @@ readme = "README.md"
 repository = "https://github.com/cowboy8625/ezquadtree"
 license = "Apache-2.0"
 keywords = ["quadtree", "tree", "algorithm", "data-structure"]
-categories = ["Data Structure", "Algorithms"]
+categories = ["Data-Structure", "Algorithms"]
 
 [dependencies]
 serde = { version = "1.0.117", features = ["derive"] }

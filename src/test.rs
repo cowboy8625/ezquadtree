@@ -89,6 +89,23 @@ fn test_replace_same_location() {
     assert_eq!(qt.len(), 1);
 }
 
+#[test]
+fn test_iter() {
+    let foos = create_foo(0..100);
+    let (w, h) = (400, 400);
+    let bb = Rectangle::new(0, 0, w, h);
+
+    let mut qt = QuadTree::new(bb, 4);
+
+    insert_foo(&mut qt, &foos);
+
+    println!("Starting For Loop");
+    // for (idx, item) in qt.iter().enumerate() {
+    //     dbg!(item, &foos[idx]);
+    //     assert_eq!(item, &foos[idx]);
+    // }
+    println!("Ending For Loop");
+}
 #[derive(Debug, Clone)]
 struct Foo {
     item: String,
