@@ -6,9 +6,14 @@
 ![Discord](https://img.shields.io/discord/509849754155614230)
 ![Lines of Code](https://tokei.rs/b1/github/cowboy8625/ezquadtree)
 
-This is the first Implementation of a quad tree I have made so there is some
-room for improvement.
+This project is currently being completey rewitten. (WIP)
 
 A [QuadTree](https://www.i-programmer.info/programming/theory/1679-quadtrees-and-octrees.html)
 uses the Hilbert curve and can be explained
 [here](http://blog.notdot.net/2009/11/Damn-Cool-Algorithms-Spatial-indexing-with-Quadtrees-and-Hilbert-Curves)
+
+# What's New?
+
+The new implmention is more of a Data Orianted Design and uses a struct of Vec's. There is no recusion.
+
+I am now using a [binary tree](https://en.wikipedia.org/wiki/Binary_heap#Heap_implementation) to fine the nodes.
